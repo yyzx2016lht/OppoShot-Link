@@ -57,7 +57,22 @@ data class UiState(
     val keepAlive: Boolean = false,
     /** 原图收发的状态文案。 */
     val transferState: String = "-",
-)
+) {
+    /** 有没有真的连着对端。判断依据是 connectedPeers，不看 tcpState 的文案。 */
+    val isConnected: Boolean
+        get() = connectedPeers != "-" && connectedPeers.isNotEmpty()
+
+    /**
+     * 状态一句话。**界面副标题和通知栏共用这一份**，不要各写各的 ——
+     * 之前两边各判各的，出现过「界面说正在寻找设备、通知还显示已连接」。
+     */
+    fun statusLine(): String = when {
+        isConnected -> "已连接 $connectedPeers"
+        scanning -> "正在寻找设备…"
+        !p2pLink -> "未连接 · 请打开跨设备互联"
+        else -> "等待连接"
+    }
+}
 
 object StateHub {
 

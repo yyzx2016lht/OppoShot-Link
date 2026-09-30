@@ -52,22 +52,49 @@ class LinkService : Service() {
 
     private var statusListener: ((UiState) -> Unit)? = null
 
+    /** 当前是否已经把通知收起来了（避免反复调用 stopForeground）。 */
+    private var notificationHidden = false
+
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        ensureForeground("正在启动…")
+        // 先用中性文案占位（前台服务必须一开始就发通知），
+        // 紧接着监听器会用真实状态覆盖掉它 —— 别写「正在启动…」，
+        // 万一监听器因为用户关了「等待时保持通知」而选择收起，就会看到那句残留。
+        ensureForeground("OppoShot Link")
 
         // 状态变化时刷新那条常驻通知。只在文案真的变了才重发：
         // 状态每几秒就会更新一次，每次都 notify 既费电，也会被系统限流、连带吞掉别的通知。
         var shownText = ""
         val listener: (UiState) -> Unit = { state ->
-            val connected = state.tcpState.startsWith("已连接")
-            // 「等待时保持通知」关掉 + 当前没连上 → 把常驻通知收掉，不占通知栏。
-            // 保活不受影响：前台服务还在跑，只是没有可见的通知。
-            // 一旦连上（或用户打开了这个开关）就立刻补回来。
-            if (!connected && !DeviceIdentity.idleNotification(this)) {
-                if (shownText.isNotEmpty()) {
+            // 判断和文案都交给 UiState.statusLine()，和界面副标题同一份逻辑。
+            val connected = state.isConnected
+            val wantVisible = connected || DeviceIdentity.idleNotification(this)
+
+            if (!wantVisible) {
+                // 「等待时保持通知」关掉 + 当前没连上 → 收起常驻通知，不占通知栏。
+                //
+                // 注意：**不能用 NotificationManager.cancel()** ——
+                // 前台服务的通知带 FOREGROUND_SERVICE 标记，系统会立刻把它挂回来，
+                // 表现为「明明断连了，通知还一直显示已连接」。
+                // 必须用 stopForeground(STOP_FOREGROUND_DETACH)：
+                // 通知被摘掉，但服务仍然是前台服务，保活不受影响。
+                if (!notificationHidden) {
+                    notificationHidden = true
                     shownText = ""
+                    // 收起通知的正确做法（试过三种，只有这个有效）：
+                    //   NotificationManager.cancel() 单独用 → 无效。通知带 FOREGROUND_SERVICE
+                    //     标记，系统会立刻挂回来，表现为「断连了还显示已连接」。
+                    //   stopForeground(STOP_FOREGROUND_DETACH) 单独用 → 也无效。
+                    //     DETACH 的语义就是「只摘 FGS 标记，通知留着」，
+                    //     实测通知会从 ONGOING|FOREGROUND_SERVICE 变成 ONGOING，依然挂在那儿。
+                    //   stopForeground(STOP_FOREGROUND_REMOVE) → 通知真的消失。
+                    //
+                    // 代价：服务不再是前台服务，理论上会被系统更积极地回收。
+                    // 用户已在系统里给了自启动 + 电池优化白名单，实测能扛住。
+                    runCatching {
+                        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                    }
                     runCatching {
                         getSystemService(NotificationManager::class.java)
                             ?.cancel(NOTIFICATION_ID)
@@ -75,18 +102,13 @@ class LinkService : Service() {
                     AppLog.info(TAG, "等待中，已收起常驻通知")
                 }
             } else {
-                val text = when {
-                    connected -> {
-                        val name = state.peerName
-                        if (name.isNotBlank() && name != "-") "已连接 $name" else "已连接"
-                    }
-                    state.tcpState.contains("监听") || state.tcpState.contains("搜索") ->
-                        "等待连接"
-                    else -> state.tcpState
+                if (notificationHidden) {
+                    notificationHidden = false
+                    AppLog.info(TAG, "恢复常驻通知")
                 }
-                if (text != shownText) {
+                val text = state.statusLine()
+                if (text != shownText || !notificationVisible()) {
                     shownText = text
-                    // 收起过之后要重新「占位」，否则 startForeground 的通知不会自己回来。
                     runCatching { ensureForeground(text) }
                 }
             }
@@ -131,6 +153,12 @@ class LinkService : Service() {
             ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(text), type)
         }
     }
+
+    /** 系统里这条通知当前还在不在（用来判断收起之后要不要补回来）。 */
+    private fun notificationVisible(): Boolean = runCatching {
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.activeNotifications?.any { it.id == NOTIFICATION_ID } == true
+    }.getOrDefault(false)
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return

@@ -38,13 +38,8 @@ class MainActivity : AppCompatActivity() {
     ) { LinkController.refreshPermissions() }
 
     private val stateListener: (UiState) -> Unit = { state ->
-        val online = state.connectedPeers
-        val connected = online != "-" && online.isNotEmpty()
-        toolbar.subtitle = when {
-            connected -> "已连接 $online"
-            state.scanning -> "正在寻找设备…"
-            else -> "没有连接的设备"
-        }
+        // 文案统一由 UiState.statusLine() 提供，通知栏用的是同一份
+        toolbar.subtitle = state.statusLine()
 
         val ids = state.devices.map { it.deviceId }.filter { it.isNotEmpty() }
         val names = state.devices.map { it.name.ifBlank { it.host } }
