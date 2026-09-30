@@ -74,6 +74,19 @@ class PeerNode(
      */
     var mayDial: ((deviceId: String, host: String) -> Boolean)? = null
 
+    /**
+     * 总闸：现在允许主动拨号吗？
+     *
+     * 这个开关管的是**主动连出去**这件事，和「停止广播寻找」是两回事 ——
+     * 之前只停了广播，拨号循环照样每 1.5 秒重试一次（候选地址一直留在 PeerRegistry 里），
+     * 于是两台设备分开时手机会一直连一直失败。现在停止查找时连拨号一起停，
+     * 直到 p2p0 重新出现（互联连上）或用户手动点【重新查找】才恢复。
+     *
+     * 注意：设为 false 时**仍然保持被动**——TCP 端口继续监听、UDP 继续应答，
+     * 所以对方主动连过来依然能通。
+     */
+    @Volatile var dialEnabled: Boolean = true
+
     private fun allowed(session: Session, kind: String): Boolean {
         val did = session.peerDeviceId
         if (did.isEmpty()) return false
@@ -449,6 +462,8 @@ class PeerNode(
                     .firstOrNull { now >= (nextTryAt[it.key] ?: 0L) }
                     ?: continue
                 if (pick.host in busyHosts) continue
+                // 用户已停止查找（或 5 分钟没找到）→ 不再主动拨，等互联重新出现
+                if (!dialEnabled) continue
                 // 连接必须经过用户同意（或该设备开了「自动连接」）
                 if (mayDial?.invoke(pick.deviceId, pick.host) == false) continue
                 if (!dialing.add(pick.key)) continue

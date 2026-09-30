@@ -55,35 +55,39 @@ class LinkService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            buildNotification("正在启动…"),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-            } else {
-                0
-            },
-        )
+        ensureForeground("正在启动…")
 
         // 状态变化时刷新那条常驻通知。只在文案真的变了才重发：
         // 状态每几秒就会更新一次，每次都 notify 既费电，也会被系统限流、连带吞掉别的通知。
         var shownText = ""
         val listener: (UiState) -> Unit = { state ->
-            val text = when {
-                state.tcpState.startsWith("已连接") -> {
-                    val name = state.peerName
-                    if (name.isNotBlank() && name != "-") "已连接 $name" else "已连接"
+            val connected = state.tcpState.startsWith("已连接")
+            // 「等待时保持通知」关掉 + 当前没连上 → 把常驻通知收掉，不占通知栏。
+            // 保活不受影响：前台服务还在跑，只是没有可见的通知。
+            // 一旦连上（或用户打开了这个开关）就立刻补回来。
+            if (!connected && !DeviceIdentity.idleNotification(this)) {
+                if (shownText.isNotEmpty()) {
+                    shownText = ""
+                    runCatching {
+                        getSystemService(NotificationManager::class.java)
+                            ?.cancel(NOTIFICATION_ID)
+                    }
+                    AppLog.info(TAG, "等待中，已收起常驻通知")
                 }
-                state.tcpState.contains("监听") || state.tcpState.contains("搜索") ->
-                    "等待连接"
-                else -> state.tcpState
-            }
-            if (text != shownText) {
-                shownText = text
-                runCatching {
-                    getSystemService(NotificationManager::class.java)
-                        ?.notify(NOTIFICATION_ID, buildNotification(text))
+            } else {
+                val text = when {
+                    connected -> {
+                        val name = state.peerName
+                        if (name.isNotBlank() && name != "-") "已连接 $name" else "已连接"
+                    }
+                    state.tcpState.contains("监听") || state.tcpState.contains("搜索") ->
+                        "等待连接"
+                    else -> state.tcpState
+                }
+                if (text != shownText) {
+                    shownText = text
+                    // 收起过之后要重新「占位」，否则 startForeground 的通知不会自己回来。
+                    runCatching { ensureForeground(text) }
                 }
             }
         }
@@ -106,6 +110,27 @@ class LinkService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /**
+     * 把自己标记成前台服务（带一条通知）。
+     *
+     * 叫 `startForeground` 之前必须已经发过通知，否则 Android 14+ 会抛
+     * `ForegroundServiceDidNotStartInTimeException`；这里做两次调用是安全的。
+     */
+    private fun ensureForeground(text: String) {
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        } else {
+            0
+        }
+        runCatching {
+            getSystemService(NotificationManager::class.java)
+                ?.notify(NOTIFICATION_ID, buildNotification(text))
+        }
+        runCatching {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(text), type)
+        }
+    }
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return

@@ -13,6 +13,7 @@ object DeviceIdentity {
     private const val PREFS = "opposhot_prefs"
     private const val KEY_DEVICE_ID = "device_id"
     private const val KEY_KEEP_ALIVE = "keep_alive"
+    private const val KEY_IDLE_NOTIFICATION = "idle_notification"
 
     fun deviceId(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -31,6 +32,24 @@ object DeviceIdentity {
     fun setKeepAlive(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_KEEP_ALIVE, enabled).apply()
+    }
+
+    /**
+     * 「等待时保持通知」。
+     *
+     * 默认 **false**：找不到设备的 5 分钟里不占通知栏。
+     * 打开后则一直显示一条安静的常驻通知（文案会变成「等待连接」）。
+     *
+     * 关掉它不影响保活本身 —— 保活是靠前台服务 + 自启动白名单，
+     * 这只决定「要不要在通知栏留一条」。
+     */
+    fun idleNotification(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_IDLE_NOTIFICATION, false)
+
+    fun setIdleNotification(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_IDLE_NOTIFICATION, enabled).apply()
     }
 
     fun displayName(): String = Build.MODEL ?: "Android"

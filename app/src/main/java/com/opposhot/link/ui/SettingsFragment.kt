@@ -29,6 +29,7 @@ class SettingsFragment : Fragment() {
     private lateinit var tvPermNotify: TextView
     private lateinit var tvPermVisible: TextView
     private lateinit var swKeepAlive: MaterialSwitch
+    private lateinit var swIdleNotification: MaterialSwitch
     private lateinit var swLog: MaterialSwitch
     private lateinit var tvDiag: TextView
     private lateinit var tvLog: TextView
@@ -60,6 +61,7 @@ class SettingsFragment : Fragment() {
         tvPermNotify = view.findViewById(R.id.tvPermNotify)
         tvPermVisible = view.findViewById(R.id.tvPermVisible)
         swKeepAlive = view.findViewById(R.id.swKeepAlive)
+        swIdleNotification = view.findViewById(R.id.swIdleNotification)
         swLog = view.findViewById(R.id.swLog)
         tvDiag = view.findViewById(R.id.tvDiag)
         tvLog = view.findViewById(R.id.tvLog)
@@ -78,6 +80,14 @@ class SettingsFragment : Fragment() {
         swKeepAlive.setOnCheckedChangeListener { _, checked ->
             if (checked != DeviceIdentity.keepAlive(requireContext())) {
                 LinkController.setKeepAlive(requireContext(), checked)
+            }
+        }
+        swIdleNotification.setOnCheckedChangeListener { _, checked ->
+            if (checked != DeviceIdentity.idleNotification(requireContext())) {
+                DeviceIdentity.setIdleNotification(requireContext(), checked)
+                AppLog.event("Settings", "等待时保持通知 = $checked")
+                // 立刻生效：连着的话通知本来就在；没连的话会补上或收掉。
+                LinkController.refreshPermissions()
             }
         }
         swLog.setOnCheckedChangeListener { _, checked ->
@@ -140,6 +150,8 @@ class SettingsFragment : Fragment() {
                 LinkController.setKeepAlive(requireContext(), checked)
             }
         }
+        swIdleNotification.setOnCheckedChangeListener(null)
+        swIdleNotification.isChecked = DeviceIdentity.idleNotification(requireContext())
 
         tvDiag.text = buildString {
             append("本机：").append(state.deviceName).append("（").append(state.deviceId).append("）\n")

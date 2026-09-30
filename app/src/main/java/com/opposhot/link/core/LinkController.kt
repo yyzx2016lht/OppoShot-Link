@@ -60,6 +60,8 @@ object LinkController {
 
     /** 主动发现当前是否在跑。 */
     @Volatile private var discoveryActive = false
+    /** 上一次检查时 p2p0 是否存在。用来判断「互联刚刚恢复」。 */
+    @Volatile private var lastSeenP2p = false
 
     /**
      * 用户本次明确同意连接的对端（deviceId 或 host）。
@@ -238,24 +240,33 @@ object LinkController {
 
     // ---------------------------------------------------------------- 查找 / 连接
 
-    /** 开始主动查找设备（打开 App 时、点【重新查找】时都走这里）。 */
+    /** 开始主动查找设备（打开 App 时、点【重新查找】时、以及互联重新出现时都走这里）。 */
     fun startScan() {
         if (appContext == null) return
         discoveryActive = true
         beacon?.setScanning(true)
+        // 恢复主动拨号（stopScan 时关掉的）
+        node?.dialEnabled = true
         lastNewPeerAt = System.currentTimeMillis()
+        AppLog.event(TAG, "开始查找设备")
         StateHub.update { it.copy(scanning = true, scanState = "正在寻找设备…") }
     }
 
     /**
      * 停止主动查找。
+     *
+     * 会同时停掉「广播寻找」和「主动拨号」——
+     * 只停广播是不够的：候选地址会一直留在 PeerRegistry 里，
+     * 拨号循环每 1.5 秒就会重试一次，两台设备分开时表现为连了又断、断了又连。
+     *
      * 仍然保持「被动」：TCP 端口继续监听、UDP 继续应答别人，
-     * 所以对方主动连过来依然能通。
+     * 所以对方主动连过来依然能通。互联重新出现时会自动恢复（见 refreshInterfaces）。
      */
     fun stopScan(reason: String) {
         if (!discoveryActive) return
         discoveryActive = false
         beacon?.setScanning(false)
+        node?.dialEnabled = false
         AppLog.event(TAG, "停止查找：$reason")
         StateHub.update { it.copy(scanning = false, scanState = reason) }
     }
@@ -674,6 +685,17 @@ object LinkController {
         val interfaces = NetInfo.scan()
         val primary = NetInfo.primary(interfaces)
         val p2p = interfaces.any { it.looksLikeP2p }
+
+        // OPPO 互联重新建立（p2p0 又出现了）→ 自动恢复查找和拨号。
+        // 这是「两台设备分开 → 5 分钟后停止重试 → 拿到一起又能自动连上」的关键：
+        // 没有这段的话，5 分钟一过就永远停在停止状态，用户必须手动点【重新查找】。
+        if (p2p && !lastSeenP2p) {
+            if (!discoveryActive) {
+                AppLog.event(TAG, "检测到 OPPO 互联恢复，自动重新查找设备")
+                startScan()
+            }
+        }
+        lastSeenP2p = p2p
 
         // 每 15 秒确认一次组播锁还在。ColorOS / OxygenOS 会在 Wi-Fi 链路重建时把锁收走，
         // 一旦丢了，广播发送会直接 EPERM，设备就再也发现不了别人。
