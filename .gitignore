@@ -1,0 +1,46 @@
+# ---- 鏋勫缓浜х墿 ----
+/build/
+/app/build/
+.gradle/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# ---- 杩愯鏃舵姄鍙栫殑鐪熸満鏃ュ織(鍚澶囧簭鍒楀彿銆佽矾寰勩€佸壀璐存澘鍐呭) ----
+/0*_*.txt
+/snapshots/
+*.log
+
+# ---- 涓庢湰椤圭洰鏃犲叧鐨勭嫭绔嬪伐鍏?閲岄潰鏈夋湰鏈?MAC / ADB 鍏挜) ----
+/adb_wifi_keepalive/
+
+# ---- 棰勮鎴浘(鍚湡鏈洪€氱煡鍐呭) ----
+/ui-preview/*.png
+
+# ---- dist 閲岀殑鍘嗗彶 APK ----
+/dist/
+
+# ---- 早期调研脚本(含真机网络信息,与 App 无关) ----
+/analysis.md
+/hpc_xfer/
+/oppo_link_snapshot.sh
+/Phase*.md
+/OPPO_*.md
+
+# ---- 开发过程文档(含真机序列号/内网IP,不对外) ----
+/交接文档_*.md
+/进度_*.md
+/交付说明_*.md
+/*.7z
+/*_monitors.sh
+/tcpdump_supervisor.sh
+/ui-preview/

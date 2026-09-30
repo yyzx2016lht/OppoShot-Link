@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OppoShot Link</string>
+
+    <!-- 系统「无障碍」设置里显示的说明，必须如实描述用途 -->
+    <string name="accessibility_service_description">用于在后台读取剪贴板，好把你在别的 App 里复制的文字同步到你自己连着的设备上。本服务不读取屏幕内容、不记录任何操作、不会把内容上传到任何服务器。剪贴板内容只在你的设备之间直连传输。</string>
+</resources>

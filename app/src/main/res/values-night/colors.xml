@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#0E1116</color>
+    <color name="surface">#171B22</color>
+    <color name="surface_alt">#1F242D</color>
+    <color name="outline">#2A313B</color>
+
+    <color name="brand">#7FA5FF</color>
+    <color name="brand_deep">#5B87F5</color>
+    <color name="brand_soft">#2A7FA5FF</color>
+    <color name="on_brand">#0B1220</color>
+
+    <color name="text_primary">#EAEEF4</color>
+    <color name="text_secondary">#A2ACBB</color>
+    <color name="text_tertiary">#6B7684</color>
+    <color name="on_brand_dim">#B3FFFFFF</color>
+
+    <color name="ok">#3DD68C</color>
+    <color name="ok_soft">#263DD68C</color>
+    <color name="warn">#F0B354</color>
+    <color name="warn_soft">#26F0B354</color>
+    <color name="danger">#F1706E</color>
+    <color name="danger_soft">#26F1706E</color>
+    <color name="neutral_soft">#1FA2ACBB</color>
+
+    <color name="nav_off">#6B7684</color>
+    <color name="nav_on">#7FA5FF</color>
+</resources>

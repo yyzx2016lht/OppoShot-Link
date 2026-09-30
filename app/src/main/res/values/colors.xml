@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#F2F4F7</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_alt">#F7F8FA</color>
+    <color name="outline">#E2E6EC</color>
+
+    <color name="brand">#2F6BFF</color>
+    <color name="brand_deep">#1E45C8</color>
+    <color name="brand_soft">#1F2F6BFF</color>
+    <color name="on_brand">#FFFFFF</color>
+
+    <color name="text_primary">#11151C</color>
+    <color name="text_secondary">#5B6472</color>
+    <color name="text_tertiary">#9AA3B2</color>
+    <!-- 放在品牌色背景上的次要文字 -->
+    <color name="on_brand_dim">#CCFFFFFF</color>
+
+    <color name="ok">#12A05C</color>
+    <color name="ok_soft">#1A12A05C</color>
+    <color name="warn">#D9820B</color>
+    <color name="warn_soft">#1AD9820B</color>
+    <color name="danger">#D63B3B</color>
+    <color name="danger_soft">#1AD63B3B</color>
+    <color name="neutral_soft">#1A5B6472</color>
+
+    <color name="nav_off">#9AA3B2</color>
+    <color name="nav_on">#2F6BFF</color>
+</resources>
